@@ -41,7 +41,7 @@ class LocalisedField:
     portuguese_brazilian: str | None = attrs.field(repr=False, default=None, metadata={"locale-code": "pt-BR"})
     romanian_romania: str | None = attrs.field(repr=False, default=None, metadata={"locale-code": "ro"})
     russian: str | None = attrs.field(repr=False, default=None, metadata={"locale-code": "ru"})
-    spanish: str | None = attrs.field(repr=False, default=None, metadata={"locale-code": "es-ES"})
+    spanish: str | None = attrs.field(repr=False, default=None, metadata={"locale-code": ["es-ES", "es-419"]})
     swedish: str | None = attrs.field(repr=False, default=None, metadata={"locale-code": "sv-SE"})
     thai: str | None = attrs.field(repr=False, default=None, metadata={"locale-code": "th"})
     turkish: str | None = attrs.field(repr=False, default=None, metadata={"locale-code": "tr"})
@@ -63,8 +63,12 @@ class LocalisedField:
         data = []
         for attr in self.__attrs_attrs__:
             if attr.name != self.default_locale:
-                if code := attr.metadata.get("locale-code"):
-                    data.append((code, attr.name))
+                codes = attr.metadata.get("locale-code")
+                if isinstance(codes, list):  # Si es una lista, iteramos y añadimos todos los códigos
+                    for code in codes:
+                        data.append((code, attr.name))
+                elif isinstance(codes, str):  # Si es un solo string, lo añadimos normalmente
+                    data.append((codes, attr.name))
         return dict(data)
 
     @property
@@ -115,16 +119,19 @@ class LocalisedField:
     def as_dict(self) -> str:
         return str(self)
 
-    def to_locale_dict(self) -> dict:
+    def to_locale_dict(self) -> dict | None:
         data = {}
         for attr in self.__attrs_attrs__:
             if attr.name != self.default_locale and "locale-code" in attr.metadata:
                 if val := getattr(self, attr.name):
-                    data[attr.metadata["locale-code"]] = val
+                    codes = attr.metadata["locale-code"]
+                    if isinstance(codes, list):  
+                        for code in codes:  
+                            data[code] = val  
+                    else:  
+                        data[codes] = val  
 
-        if not data:
-            data = None  # handle discord being stupid
-        return data
+        return data if data else None  # Maneja el caso donde no haya datos
 
 
 LocalizedField = LocalisedField
